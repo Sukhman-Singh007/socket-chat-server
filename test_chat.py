@@ -241,6 +241,17 @@ class ChatServerTestCase(unittest.TestCase):
         alice.send("it worked")
         bob.expect("alicia: it worked")
 
+    def test_nick_to_own_name_is_a_noop(self):
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        alice.send("/nick alice")
+        alice.expect("You are already known as alice.")
+        # Still alice, and still chatting under that name.
+        alice.send("still me")
+        bob.expect("alice: still me")
+
     def test_nick_taken(self):
         alice = self.connect("alice")
         bob = self.connect("bob")

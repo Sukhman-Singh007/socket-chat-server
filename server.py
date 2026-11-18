@@ -333,6 +333,9 @@ class ChatServer:
                 "ERROR: Usernames are 1-20 chars: letters, digits, _ or -.",
             )
             return True, username
+        if new_name == username:
+            self._send(username, f"You are already known as {username}.")
+            return True, username
         with self._lock:
             if new_name in self._clients:
                 taken = True
