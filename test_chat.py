@@ -168,6 +168,33 @@ class ChatServerTestCase(unittest.TestCase):
         alice.send("/msg nobody hello?")
         alice.expect("No user named nobody.")
 
+    def test_private_message_to_disconnected_user_keeps_sender_connected(self):
+        # A target whose socket died a moment ago must not take the
+        # sender down with it: the DM is dropped, the sender stays.
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        dead, peer = socket.socketpair()
+        peer.close()
+        try:
+            with self.server._lock:
+                self.server._clients["ghost"] = {
+                    "conn": dead, "room": "lobby"
+                }
+                self.server._rooms.setdefault("lobby", set()).add("ghost")
+            alice.send("/msg ghost hello there")
+            alice.expect("[DM to ghost] hello there")
+            alice.send("still here")
+            bob.expect("alice: still here")
+        finally:
+            with self.server._lock:
+                self.server._clients.pop("ghost", None)
+                members = self.server._rooms.get("lobby")
+                if members is not None:
+                    members.discard("ghost")
+            dead.close()
+
     def test_username_taken(self):
         self.connect("alice")
         other = TestClient(self.port)

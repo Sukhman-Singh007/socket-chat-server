@@ -315,11 +315,14 @@ class ChatServer:
             return True, username
         target, message = parts
         with self._lock:
-            target_conn = self._clients.get(target, {}).get("conn")
-        if target_conn is None:
+            exists = target in self._clients
+        if not exists:
             self._send(username, f"No user named {target}.")
             return True, username
-        self._send_raw(target_conn, f"[DM from {username}] {message}")
+        # Send through _send, not the raw socket: if the target's
+        # connection died a moment ago, the send fails silently
+        # instead of raising OSError and disconnecting the sender.
+        self._send(target, f"[DM from {username}] {message}")
         self._send(username, f"[DM to {target}] {message}")
         return True, username
 
