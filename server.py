@@ -314,6 +314,9 @@ class ChatServer:
             self._send(username, "Usage: /msg <user> <text>")
             return True, username
         target, message = parts
+        if target == username:
+            self._send(username, "You can't send a private message to yourself.")
+            return True, username
         with self._lock:
             exists = target in self._clients
         if not exists:

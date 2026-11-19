@@ -168,6 +168,22 @@ class ChatServerTestCase(unittest.TestCase):
         alice.send("/msg nobody hello?")
         alice.expect("No user named nobody.")
 
+    def test_private_message_to_self_is_rejected(self):
+        # DMing yourself used to deliver two echoes ("[DM from alice]"
+        # and "[DM to alice]"); now it is a friendly rejection and
+        # nothing is delivered.
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        alice.send("/msg alice hello me")
+        alice.expect("can't send a private message to yourself")
+        alice.expect_nothing()
+        bob.expect_nothing()
+        # Still chatting normally afterwards.
+        alice.send("still here")
+        bob.expect("alice: still here")
+
     def test_private_message_to_disconnected_user_keeps_sender_connected(self):
         # A target whose socket died a moment ago must not take the
         # sender down with it: the DM is dropped, the sender stays.
