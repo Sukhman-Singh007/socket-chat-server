@@ -321,19 +321,28 @@ class ChatServer:
             self._send(username, "Usage: /msg <user> <text>")
             return True, username
         target, message = parts
-        if target == username:
-            self._send(username, "You can't send a private message to yourself.")
-            return True, username
+        # Usernames are matched case-insensitively: "/msg ALICE"
+        # reaches Alice, just as "/join Python" reaches #python.
+        # Resolve the spelling the user actually registered under so
+        # the echoes show the real name, and so DMing yourself under
+        # a different case is still caught as a self-DM.
         with self._lock:
-            exists = target in self._clients
-        if not exists:
+            actual = next(
+                (name for name in self._clients
+                 if name.lower() == target.lower()),
+                None,
+            )
+        if actual is None:
             self._send(username, f"No user named {target}.")
+            return True, username
+        if actual == username:
+            self._send(username, "You can't send a private message to yourself.")
             return True, username
         # Send through _send, not the raw socket: if the target's
         # connection died a moment ago, the send fails silently
         # instead of raising OSError and disconnecting the sender.
-        self._send(target, f"[DM from {username}] {message}")
-        self._send(username, f"[DM to {target}] {message}")
+        self._send(actual, f"[DM from {username}] {message}")
+        self._send(username, f"[DM to {actual}] {message}")
         return True, username
 
     def _change_nick(self, username, new_name):

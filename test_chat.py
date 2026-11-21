@@ -192,6 +192,22 @@ class ChatServerTestCase(unittest.TestCase):
         alice.expect("[DM to bob] hey, just us")
         carol.expect_nothing()
 
+    def test_private_message_target_is_case_insensitive(self):
+        # "/msg ALICE" must reach Alice — the target used to be
+        # matched case-sensitively, so the DM failed with
+        # "No user named ALICE." even though Alice was online.
+        alice = self.connect("Alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        bob.send("/msg ALICE hey, any case works")
+        alice.expect("[DM from bob] hey, any case works")
+        bob.expect("[DM to Alice] hey, any case works")
+        # And DMing yourself under a different case is still a self-DM.
+        alice.drain()
+        alice.send("/msg alice hello me")
+        alice.expect("can't send a private message to yourself")
+
     def test_private_message_to_missing_user(self):
         alice = self.connect("alice")
         alice.drain()
