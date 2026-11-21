@@ -135,6 +135,23 @@ class ChatServerTestCase(unittest.TestCase):
         # The sender also receives their own message back.
         alice.expect("alice: hello everyone")
 
+    def test_join_room_name_is_case_insensitive(self):
+        # "/join Python" and "/join python" must be the same room —
+        # two spellings of one name used to split people apart.
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.send("/join Python")
+        alice.expect("You joined #python.")
+        bob.send("/join python")
+        bob.expect("You joined #python.")
+        alice.expect("* bob joined #python.")
+        alice.drain()
+        bob.drain()
+        alice.send("same room?")
+        bob.expect("alice: same room?")
+        alice.send("/users")
+        alice.expect("Users in #python: alice, bob")
+
     def test_room_isolation(self):
         alice = self.connect("alice")
         bob = self.connect("bob")

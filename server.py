@@ -14,8 +14,9 @@ line per message:
   * Lines starting with "/" are commands — type /help in the client
     for the full list.
 
-Rooms are created on demand with /join. Private messages go with
-/msg <user> <text>. One thread handles each connected client; all
+Rooms are created on demand with /join. Room names are
+case-insensitive: "/join Python" and "/join python" are the same room.
+Private messages go with /msg <user> <text>. One thread handles each connected client; all
 shared state (who is in which room) is guarded by a single lock.
 
 This is a learning / portfolio project, not a production chat
@@ -278,6 +279,10 @@ class ChatServer:
         return True, username
 
     def _join_room(self, username, room):
+        # Room names are case-insensitive: "/join Python" and
+        # "/join python" are the same room, so two spellings of one
+        # name never split people into rooms that can't see each other.
+        room = room.lower()
         if not ROOM_RE.match(room):
             self._send(
                 username,
