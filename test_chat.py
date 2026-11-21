@@ -152,6 +152,19 @@ class ChatServerTestCase(unittest.TestCase):
         alice.send("/users")
         alice.expect("Users in #python: alice, bob")
 
+    def test_whitespace_only_line_is_ignored(self):
+        # A line of only spaces used to be broadcast as "alice:    ".
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        alice.send("   ")
+        alice.expect_nothing()
+        bob.expect_nothing()
+        # Normal chat still works afterwards.
+        alice.send("still here")
+        bob.expect("alice: still here")
+
     def test_room_isolation(self):
         alice = self.connect("alice")
         bob = self.connect("bob")

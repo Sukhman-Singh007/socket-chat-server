@@ -147,7 +147,9 @@ class ChatServer:
             )
             for line in reader:
                 text = line.rstrip("\r\n")
-                if not text:
+                if not text.strip():
+                    # A line of only spaces is not a message — don't
+                    # broadcast "alice:    " to the whole room.
                     continue
                 if text.startswith("/"):
                     keep_going, username = self._handle_command(username, text)
