@@ -203,8 +203,14 @@ class ChatServer:
                     "letters, digits, _ or -.",
                 )
                 continue
+            # Usernames are unique case-insensitively: "Alice" and
+            # "alice" must not both be online, because /msg resolves
+            # its target case-insensitively and would be ambiguous.
             with self._lock:
-                if name in self._clients:
+                if any(
+                    taken_name.lower() == name.lower()
+                    for taken_name in self._clients
+                ):
                     taken = True
                 else:
                     taken = False
@@ -352,11 +358,17 @@ class ChatServer:
                 "ERROR: Usernames are 1-20 chars: letters, digits, _ or -.",
             )
             return True, username
-        if new_name == username:
+        if new_name.lower() == username.lower():
             self._send(username, f"You are already known as {username}.")
             return True, username
+        # Same rule as the handshake: a rename must not collide with
+        # another user under a different case ("BOB" vs "bob"), since
+        # /msg resolves its target case-insensitively.
         with self._lock:
-            if new_name in self._clients:
+            if any(
+                taken_name.lower() == new_name.lower()
+                for taken_name in self._clients
+            ):
                 taken = True
             else:
                 taken = False

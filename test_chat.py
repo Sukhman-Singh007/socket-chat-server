@@ -270,6 +270,22 @@ class ChatServerTestCase(unittest.TestCase):
         welcome = other.readline()
         self.assertTrue(welcome.startswith("WELCOME"))
 
+    def test_username_taken_is_case_insensitive(self):
+        # "Alice" and "alice" must not both be online: /msg resolves
+        # its target case-insensitively, so two spellings of one name
+        # would make a DM ambiguous.
+        self.connect("alice")
+        other = TestClient(self.port)
+        self.clients.append(other)
+        error = other.try_login("ALICE")
+        self.assertIn("taken", error)
+        # The server re-prompts for a username after the error.
+        prompt = other.readline()
+        self.assertTrue(prompt.startswith("USERNAME:"))
+        other.send("alice2")
+        welcome = other.readline()
+        self.assertTrue(welcome.startswith("WELCOME"))
+
     def test_rooms_and_users(self):
         alice = self.connect("alice")
         bob = self.connect("bob")
@@ -324,6 +340,29 @@ class ChatServerTestCase(unittest.TestCase):
         # The server keeps working after the rejected rename.
         alice.send("still here")
         bob.expect("alice: still here")
+
+    def test_nick_taken_is_case_insensitive(self):
+        # "/nick BOB" must not steal bob's name under a different
+        # case — /msg would then be ambiguous about which Bob to DM.
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        alice.send("/nick BOB")
+        alice.expect("That username is taken.")
+        alice.send("still here")
+        bob.expect("alice: still here")
+
+    def test_nick_to_own_name_other_case_is_a_noop(self):
+        # "/nick ALICE" when you are "alice" is still your own name.
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        alice.send("/nick ALICE")
+        alice.expect("You are already known as alice.")
+        alice.send("still me")
+        bob.expect("alice: still me")
 
     def test_unknown_command(self):
         alice = self.connect("alice")
