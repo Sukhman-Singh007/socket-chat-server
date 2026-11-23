@@ -364,6 +364,33 @@ class ChatServerTestCase(unittest.TestCase):
         alice.send("still me")
         bob.expect("alice: still me")
 
+    def test_me_action_broadcast(self):
+        # "/me waves" is broadcast to the sender's room in third
+        # person ("* alice waves"), including back to the sender —
+        # it used to fall through to "Unknown command: /me".
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        carol = self.connect("carol")
+        carol.send("/join python")
+        carol.expect("You joined #python.")
+        alice.drain()
+        bob.drain()
+        carol.drain()
+        alice.send("/me waves hello")
+        bob.expect("* alice waves hello")
+        alice.expect("* alice waves hello")
+        carol.expect_nothing()
+
+    def test_me_without_action_shows_usage(self):
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        alice.drain()
+        bob.drain()
+        alice.send("/me")
+        alice.expect("Usage: /me <action>")
+        alice.expect_nothing()
+        bob.expect_nothing()
+
     def test_unknown_command(self):
         alice = self.connect("alice")
         alice.drain()

@@ -37,6 +37,7 @@ at the server machine's address with `--host <address>`.
 | `/users` | List users in your current room. |
 | `/join <room>` | Move to a room (created if it does not exist). |
 | `/msg <user> <text>` | Send a private message to one user. |
+| `/me <action>` | Send an action to your room, e.g. `/me waves` → `* alice waves`. |
 | `/nick <name>` | Change your username. |
 | `/quit` | Leave the chat. |
 
@@ -72,9 +73,9 @@ drives it over real TCP sockets — no mocks of the networking:
 python -m unittest test_chat -v
 ```
 
-It covers room broadcast, room isolation, private messages,
-duplicate usernames, room/user listings, leave notifications,
-nickname changes, and unknown commands.
+It covers room broadcast, room isolation, private messages, action
+messages, duplicate usernames, room/user listings, leave
+notifications, nickname changes, and unknown commands.
 
 ## Project structure
 

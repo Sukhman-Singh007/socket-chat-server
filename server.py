@@ -44,6 +44,7 @@ HELP_LINES = [
     "  /users                 List users in your current room.",
     "  /join <room>           Move to a room (created if it does not exist).",
     "  /msg <user> <text>     Send a private message to one user.",
+    "  /me <action>           Send an action, e.g. /me waves hello.",
     "  /nick <name>           Change your username.",
     "  /quit                  Leave the chat.",
     "Anything else is sent to everyone in your current room.",
@@ -280,6 +281,9 @@ class ChatServer:
         if cmd == "/msg":
             return self._send_private(username, arg)
 
+        if cmd == "/me":
+            return self._send_action(username, arg)
+
         if cmd == "/nick":
             return self._change_nick(username, arg)
 
@@ -349,6 +353,20 @@ class ChatServer:
         # instead of raising OSError and disconnecting the sender.
         self._send(actual, f"[DM from {username}] {message}")
         self._send(username, f"[DM to {actual}] {message}")
+        return True, username
+
+    def _send_action(self, username, action):
+        # "/me waves" is an action, broadcast to the sender's room
+        # like a normal message but in third person: "* alice waves".
+        if not action:
+            self._send(username, "Usage: /me <action>")
+            return True, username
+        with self._lock:
+            info = self._clients.get(username)
+            if info is None:
+                return False, username
+            room = info["room"]
+        self._broadcast(room, f"* {username} {action}")
         return True, username
 
     def _change_nick(self, username, new_name):
