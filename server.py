@@ -60,6 +60,11 @@ class ChatServer:
         self._sock = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        # One lock for every outbound write: two threads calling
+        # sendall() on the same socket at once can interleave bytes
+        # mid-message, so a receiver sees fused lines and loses the
+        # line framing. Serializing all sends keeps every line intact.
+        self._send_lock = threading.Lock()
         # username -> {"conn": socket, "room": str}
         self._clients = {}
         # room name -> set of usernames
@@ -437,10 +442,12 @@ class ChatServer:
             except OSError:
                 pass
 
-    @staticmethod
-    def _send_raw(conn, message):
-        for line in message.split("\n"):
-            conn.sendall((line + "\n").encode("utf-8"))
+    def _send_raw(self, conn, message):
+        """Write one message to a socket, serialized with every other
+        outbound write (see _send_lock)."""
+        with self._send_lock:
+            for line in message.split("\n"):
+                conn.sendall((line + "\n").encode("utf-8"))
 
 
 def main():

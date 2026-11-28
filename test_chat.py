@@ -403,6 +403,51 @@ class ChatServerTestCase(unittest.TestCase):
         error = client.try_login("   ")
         self.assertIn("ERROR", error)
 
+    def test_concurrent_broadcasts_do_not_interleave(self):
+        # Two threads broadcasting large messages at once used to
+        # interleave bytes on the receiver's socket: sendall() from
+        # two threads can split a message mid-way, so the receiver
+        # saw fused lines (e.g. one 1.6 MB "line" made of two
+        # messages) and lost the line framing. Outbound writes are
+        # now serialized, so every line arrives intact.
+        alice = self.connect("alice")
+        bob = self.connect("bob")
+        bob.sock.settimeout(10)
+        # Alice moves to another room: the flood is broadcast to the
+        # lobby, so only bob receives it — and a client that never
+        # reads would stall the senders' socket buffers, which is a
+        # different problem from the interleaving tested here.
+        alice.send("/join python")
+        alice.expect("You joined #python.")
+        alice.drain()
+        bob.drain()
+        msg_a = "A" * (512 * 1024)
+        msg_b = "B" * (512 * 1024)
+
+        def sender(msg):
+            for _ in range(8):
+                self.server._broadcast("lobby", msg)
+
+        threads = [
+            threading.Thread(target=sender, args=(msg_a,), daemon=True),
+            threading.Thread(target=sender, args=(msg_a,), daemon=True),
+            threading.Thread(target=sender, args=(msg_b,), daemon=True),
+            threading.Thread(target=sender, args=(msg_b,), daemon=True),
+        ]
+        for t in threads:
+            t.start()
+        for _ in range(32):
+            line = bob.readline()
+            time.sleep(0.02)
+            # assertTrue (not assertIn) so a failure does not dump a
+            # 512 KB line into the test output.
+            self.assertTrue(
+                line == msg_a or line == msg_b,
+                f"interleaved line of length {len(line)}",
+            )
+        for t in threads:
+            t.join(timeout=10)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
